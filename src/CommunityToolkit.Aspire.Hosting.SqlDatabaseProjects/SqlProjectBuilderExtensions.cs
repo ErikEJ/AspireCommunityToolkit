@@ -191,6 +191,7 @@ public static class SqlProjectBuilderExtensions
     {
         builder.ApplicationBuilder.Services.TryAddSingleton<IDacpacDeployer, DacpacDeployer>();
         builder.ApplicationBuilder.Services.TryAddSingleton<SqlProjectPublishService>();
+        builder.ApplicationBuilder.Services.TryAddSingleton<SqlProjectLauncherService>();
 
         if (target.Resource is SqlServerDatabaseResource)
         {
@@ -210,12 +211,22 @@ public static class SqlProjectBuilderExtensions
 
         builder.WithCommand("redeploy", "Redeploy", async (context) =>
         {
-            var service = context.ServiceProvider.GetRequiredService<SqlProjectPublishService>();
-            await service.PublishSqlProject(builder.Resource, target.Resource, targetDatabaseName, context.CancellationToken);
+            await RunPublish(builder, target, targetDatabaseName, context.ServiceProvider, context.CancellationToken);
             return new ExecuteCommandResult { Success = true };
         }, updateState: (context) => context.ResourceSnapshot?.State?.Text == KnownResourceStates.Finished ? ResourceCommandState.Enabled : ResourceCommandState.Disabled,
            displayDescription: "Redeploys the SQL Server Database Project to the target database.",
            iconName: "ArrowReset",
+           iconVariant: IconVariant.Filled,
+           isHighlighted: true);
+
+        builder.WithCommand("launchAds", "Connect to database in Azure Data Studio", async (context) =>
+        {
+            var service = context.ServiceProvider.GetRequiredService<SqlProjectLauncherService>();
+            await service.LaunchAzureDataStudio(builder.Resource, target.Resource, targetDatabaseName, context.CancellationToken);
+            return new ExecuteCommandResult { Success = true };
+        }, updateState: (context) => context.ResourceSnapshot?.State?.Text == KnownResourceStates.Finished ? ResourceCommandState.Enabled : ResourceCommandState.Disabled,
+           displayDescription: "Connect to the target database in Azure Data Studio",
+           iconName: "DatabasePlugConnected",
            iconVariant: IconVariant.Filled,
            isHighlighted: true);
 
